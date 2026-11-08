@@ -1,5 +1,5 @@
 name: OpenAI Secure MCP Tunnel
-version: "v0.0.20"
+version: "v0.0.21"
 slug: openai_tunnel
 description: Outbound-only OpenAI MCP tunnel using the official OpenAI image
 url: https://github.com/fowl2-bot/ha-openai-tunnel
@@ -15,7 +15,7 @@ boot: manual
 options:
   CONTROL_PLANE_TUNNEL_ID: null
   MCP_SERVER_URL: http://supervisor/core/api/mcp
-  MCP_EXTRA_HEADERS: "X-Supervisor-Token: env:SUPERVISOR_TOKEN"
+  MCP_EXTRA_HEADERS: "X-Ha-Access: env:SUPERVISOR_TOKEN"
   LOG_LEVEL: info
   LOG_FORMAT: struct-text
 schema:
