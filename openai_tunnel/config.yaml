@@ -1,13 +1,17 @@
 name: OpenAI Secure MCP Tunnel
-version: "v0.0.20"
+version: "0.1.0"
 slug: openai_tunnel
 description: Outbound-only OpenAI MCP tunnel using the official OpenAI image
 url: https://github.com/fowl2-bot/ha-openai-tunnel
 arch:
   - amd64
   - aarch64
-image: ghcr.io/openai/tunnel-client
 legacy: true
+ingress: true
+ingress_port: 8099
+ingress_entry: /
+panel_icon: mdi:connection
+panel_title: MCP Tunnel
 homeassistant_api: true
 init: true
 startup: application
