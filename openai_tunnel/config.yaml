@@ -13,7 +13,7 @@ startup: application
 boot: manual
 options:
   CONTROL_PLANE_TUNNEL_ID: null
-  MCP_SERVER_URL: http://homeassistant:8123/api/mcp
+  MCP_SERVER_URL: http://homeassistant/api/mcp
   LOG_LEVEL: info
 schema:
   CONTROL_PLANE_TUNNEL_ID: str
