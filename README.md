@@ -2,9 +2,21 @@
 
 Minimal Home Assistant OS app repository for running OpenAI's [Secure MCP Tunnel](https://github.com/openai/tunnel-client) alongside Home Assistant.
 
-Version `0.1.0` builds a small local HAOS image using OpenAI's unmodified tunnel-client binary from `ghcr.io/openai/tunnel-client:v0.0.20`, the Home Assistant Alpine base and Nginx. The proxy adapts OpenAI's built-in UI for Home Assistant Ingress. It does **not** install code into Home Assistant Core.
+Version `0.1.1` builds a small local HAOS image using OpenAI's unmodified tunnel-client binary from `ghcr.io/openai/tunnel-client:v0.0.20`, the Home Assistant Alpine base and Nginx. The proxy adapts OpenAI's built-in UI for Home Assistant Ingress. It does **not** install code into Home Assistant Core.
 
 > **Status:** Experimental, personal deployment. The container has started and connected to the OpenAI tunnel control plane; end-to-end ChatGPT MCP access is still being tested. This is not a security audit or a supported OpenAI/Home Assistant product.
+
+## Related projects
+
+Several independent Home Assistant projects package the same [official OpenAI tunnel client](https://github.com/openai/tunnel-client):
+
+| Project | Home Assistant packaging | Main distinction |
+| --- | --- | --- |
+| **[This project](https://github.com/fowl2-bot/ha-openai-tunnel)** | HAOS app (separate container) | One tunnel client, experimental Ingress access to its built-in web UI |
+| **[Home Assistant MCP Tunnel](https://github.com/lukkezen/home-assistant-mcp-tunnel)** | HAOS add-on | Multiple independently configured tunnels; aims to support other providers |
+| **[OpenAI Tunnel for HA-MCP](https://github.com/norpol/hass-codex-tunnel-mcp)** | HACS custom integration (runs inside HA Core) | Home Assistant entities and management UI, verified binary updates and rollback; no embedded upstream web UI |
+
+These are community projects, not official OpenAI or Home Assistant integrations. Choose based on whether you prefer a separate HAOS app, multiple tunnels, or native Home Assistant entities.
 
 ## Requirements
 
