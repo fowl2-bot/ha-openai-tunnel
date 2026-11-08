@@ -1,0 +1,22 @@
+name: OpenAI Secure MCP Tunnel
+version: "v0.0.19"
+slug: openai_tunnel
+description: Outbound-only OpenAI MCP tunnel using the official OpenAI image
+url: https://github.com/fowl2-bot/ha-openai-tunnel
+arch:
+  - amd64
+  - aarch64
+image: ghcr.io/openai/tunnel-client
+legacy: true
+init: true
+startup: application
+boot: manual
+options:
+  CONTROL_PLANE_TUNNEL_ID: null
+  MCP_SERVER_URL: http://homeassistant:8123/api/mcp
+  LOG_LEVEL: info
+schema:
+  CONTROL_PLANE_TUNNEL_ID: str
+  CONTROL_PLANE_API_KEY: password
+  MCP_SERVER_URL: str
+  LOG_LEVEL: list(debug|info|warn|error)
