@@ -91,9 +91,15 @@ jobs:
       - name: Generate changelog
         shell: bash
         run: |
-          git cliff --config cliff.toml --unreleased \
-            --tag "v$VERSION" \
-            --prepend openai_tunnel/CHANGELOG.md
+          if [[ -f openai_tunnel/CHANGELOG.md ]]; then
+            git cliff --config cliff.toml --unreleased \
+              --tag "v$VERSION" \
+              --prepend openai_tunnel/CHANGELOG.md
+          else
+            git cliff --config cliff.toml --unreleased \
+              --tag "v$VERSION" \
+              --output openai_tunnel/CHANGELOG.md
+          fi
           test -s openai_tunnel/CHANGELOG.md
 
       - name: Commit release and tag
