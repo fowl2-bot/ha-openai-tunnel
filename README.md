@@ -2,7 +2,7 @@
 
 Minimal Home Assistant OS app repository for running OpenAI's [Secure MCP Tunnel](https://github.com/openai/tunnel-client) alongside Home Assistant.
 
-It runs OpenAI's published container image (`ghcr.io/openai/tunnel-client`), rather than installing a custom integration into Home Assistant Core. No Dockerfile, startup script, or third-party tunnel executable is included in this repository.
+Version `0.1.0` builds a small local HAOS image using OpenAI's unmodified tunnel-client binary from `ghcr.io/openai/tunnel-client:v0.0.20`, the Home Assistant Alpine base and Nginx. The proxy adapts OpenAI's built-in UI for Home Assistant Ingress. It does **not** install code into Home Assistant Core.
 
 > **Status:** Experimental, personal deployment. The container has started and connected to the OpenAI tunnel control plane; end-to-end ChatGPT MCP access is still being tested. This is not a security audit or a supported OpenAI/Home Assistant product.
 
@@ -24,12 +24,20 @@ It runs OpenAI's published container image (`ghcr.io/openai/tunnel-client`), rat
    - `MCP_SERVER_URL`: `http://supervisor/core/api/mcp`.
    - `MCP_EXTRA_HEADERS`: `X-Ha-Access: env:SUPERVISOR_TOKEN`.
    - `LOG_LEVEL`: `info`; `LOG_FORMAT`: `struct-text`.
-5. Save, start the app, and inspect its Logs tab. A successful control-plane connection does **not** necessarily mean MCP discovery and authentication succeed end to end.
+5. Save, start the app, and inspect its Logs tab. Select **Open Web UI** on the app page to see status, recent logs and live log level controls via Home Assistant Ingress. A successful control-plane connection does **not** necessarily mean MCP discovery and authentication succeed end to end.
 6. In ChatGPT, create a **custom MCP plugin** using **Tunnel**, select your tunnel and select **No auth** *only when local Home Assistant authentication via the Supervisor proxy is functioning*.
 
 The Supervisor supplies the `SUPERVISOR_TOKEN` environment variable when `homeassistant_api: true` is enabled. The tunnel client is configured to inject that token only into its upstream requests; it is not entered in ChatGPT. Do not paste or hardcode the token.
 
 **Important:** App configuration can persist across upgrades. After updating, inspect both `MCP_SERVER_URL` and `MCP_EXTRA_HEADERS`; new defaults may not replace existing saved values.
+
+## Ingress UI (experimental)
+
+Home Assistant authenticates the UI. The Nginx proxy listens only for Supervisor Ingress traffic on port `8099` (no host port is published). OpenAI's admin/health UI stays bound to the container's loopback on port `8080`, with remote UI access disabled.
+
+OpenAI's UI assumes it is hosted at the web root. Ingress instead uses a per-app prefixed URL. Our Nginx proxy rewrites its root-relative asset URLs, API requests and EventSource endpoints. **This is a fragile compatibility layer, not an upstream-supported base-path mode.** It was syntax-checked but has not yet been tested end to end on HAOS. An upstream UI update could break these substitutions.
+
+To update from the original image-only packaging to `0.1.0`, refresh the Home Assistant app repository and select Update. This changes the app from pulling a prebuilt OpenAI image directly to building a local image with Nginx. Keep a copy of the saved non-secret configuration before updating and avoid publishing screenshots or logs containing keys. The update can fail during local image building; the previous app version should remain available until migration succeeds.
 
 ## Security and limitations
 
@@ -38,7 +46,7 @@ The Supervisor supplies the `SUPERVISOR_TOKEN` environment variable when `homeas
 - There is **no per-user OAuth identity or authorisation** in this setup. Do not expose this tunnel to untrusted workspaces or users.
 - A container reduces coupling with Home Assistant Core but is **not** a guarantee of least privilege or security. The app uses the Supervisor/Core API proxy and should be treated as highly privileged.
 - Credentials entered in the Home Assistant app configuration are sensitive. Protect Home Assistant backups and diagnostic exports.
-- The app configuration's `version` identifies this packaging, not necessarily the exact image build running underneath. Consider pinning by digest for reproducible deployments.
+- The app's version is now independent of the upstream tunnel client's version. The Dockerfile pins upstream client `v0.0.20` but not its image digest; consider digest pinning for stronger reproducibility.
 - The Home Assistant MCP server's supported operations, including any configuration writes, depend on its own implementation and the permissions exposed. HAOS host/disk management is not automatically available through MCP.
 - This repository is **experimental and not fully tested**; the local Supervisor token header and MCP transport still require end-to-end validation.
 
@@ -46,6 +54,8 @@ The Supervisor supplies the `SUPERVISOR_TOKEN` environment variable when `homeas
 
 - `repository.yaml` — Home Assistant app repository metadata.
 - `openai_tunnel/config.yaml` — HAOS app definition and configuration schema.
+- `openai_tunnel/Dockerfile` — locally builds a container with the upstream tunnel client and Nginx.
+- `openai_tunnel/ingress.conf` — restrictive Ingress proxy, including path rewriting for OpenAI's built-in UI.
 
 ## Troubleshooting
 
