@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.3 - 2026-11-08
+
+- Document related HAOS and HACS tunnel projects in README comparison
 ## 0.1.2 - 2026-11-08
 
 - Initialize Home Assistant app repository
