@@ -2,9 +2,9 @@
 
 Minimal Home Assistant OS app repository for running OpenAI's [Secure MCP Tunnel](https://github.com/openai/tunnel-client) alongside Home Assistant.
 
-Version `0.1.1` builds a small local HAOS image using OpenAI's unmodified tunnel-client binary from `ghcr.io/openai/tunnel-client:v0.0.20`, the Home Assistant Alpine base and Nginx. The proxy adapts OpenAI's built-in UI for Home Assistant Ingress. It does **not** install code into Home Assistant Core.
+Version `0.1.4` builds a small local HAOS image using OpenAI's unmodified tunnel-client binary from `ghcr.io/openai/tunnel-client:v0.0.20`, the Home Assistant Alpine base and Nginx. Nginx serves the experimental Home Assistant Ingress UI and provides a private MCP proxy that handles missing OAuth metadata correctly. It does **not** install code into Home Assistant Core.
 
-> **Status:** Experimental, personal deployment. The container has started and connected to the OpenAI tunnel control plane; end-to-end ChatGPT MCP access is still being tested. This is not a security audit or a supported OpenAI/Home Assistant product.
+> **Status:** Experimental, personal deployment. In earlier versions, the OpenAI client printed a green startup line even while OAuth discovery blocked control-plane polling. v0.1.4 addresses that local discovery problem; end-to-end ChatGPT MCP access is still unverified. This is not a security audit or a supported OpenAI/Home Assistant product.
 
 ## Related projects
 
@@ -33,23 +33,23 @@ These are community projects, not official OpenAI or Home Assistant integrations
 4. Under its Configuration tab, set:
    - `CONTROL_PLANE_TUNNEL_ID`: your OpenAI tunnel identifier.
    - `CONTROL_PLANE_API_KEY`: the tunnel's runtime API key. Do not paste it into GitHub issues or chat logs.
-   - `MCP_SERVER_URL`: `http://supervisor/core/api/mcp`.
+   - `MCP_SERVER_URL`: `http://127.0.0.1:8098/mcp`.
    - `MCP_EXTRA_HEADERS`: `X-Ha-Access: env:SUPERVISOR_TOKEN`.
    - `LOG_LEVEL`: `info`; `LOG_FORMAT`: `struct-text`.
-5. Save, start the app, and inspect its Logs tab. Select **Open Web UI** on the app page to see status, recent logs and live log level controls via Home Assistant Ingress. A successful control-plane connection does **not** necessarily mean MCP discovery and authentication succeed end to end.
+5. Save, start the app, and inspect its Logs tab. Nginx logs MCP and OAuth discovery requests as `mcp_proxy` lines, including HTTP status and upstream timing (without credentials). Select **Open Web UI** on the app page to inspect tunnel status via Home Assistant Ingress; this UI is still experimental. Do not treat the green `tunnel-client started` line as proof of successful polling.
 6. In ChatGPT, create a **custom MCP plugin** using **Tunnel**, select your tunnel and select **No auth** *only when local Home Assistant authentication via the Supervisor proxy is functioning*.
 
-The Supervisor supplies the `SUPERVISOR_TOKEN` environment variable when `homeassistant_api: true` is enabled. The tunnel client is configured to inject that token only into its upstream requests; it is not entered in ChatGPT. Do not paste or hardcode the token.
+The Supervisor supplies the `SUPERVISOR_TOKEN` environment variable when `homeassistant_api: true` is enabled. The tunnel client injects the token into its requests to the loopback proxy, which forwards `X-Ha-Access` to the Supervisor Core API. The proxy does not log headers or query parameters. Do not paste or hardcode the token.
 
 **Important:** App configuration can persist across upgrades. After updating, inspect both `MCP_SERVER_URL` and `MCP_EXTRA_HEADERS`; new defaults may not replace existing saved values.
 
 ## Ingress UI (experimental)
 
-Home Assistant authenticates the UI. The Nginx proxy listens only for Supervisor Ingress traffic on port `8099` (no host port is published). OpenAI's admin/health UI stays bound to the container's loopback on port `8080`, with remote UI access disabled.
+Home Assistant authenticates the UI. The Nginx Ingress proxy listens for Supervisor Ingress traffic on port `8099` (no host port is published). Separately, the MCP proxy listens only on `127.0.0.1:8098`, returns `404` for OAuth metadata paths, and forwards `/mcp` to `supervisor/core/api/mcp` with the original authentication header. OpenAI's admin/health UI stays bound to loopback on port `8080`, with remote UI access disabled.
 
 OpenAI's UI assumes it is hosted at the web root. Ingress instead uses a per-app prefixed URL. Our Nginx proxy rewrites its root-relative asset URLs, API requests and EventSource endpoints. **This is a fragile compatibility layer, not an upstream-supported base-path mode.** It was syntax-checked but has not yet been tested end to end on HAOS. An upstream UI update could break these substitutions.
 
-To update from the original image-only packaging to `0.1.0`, refresh the Home Assistant app repository and select Update. This changes the app from pulling a prebuilt OpenAI image directly to building a local image with Nginx. Keep a copy of the saved non-secret configuration before updating and avoid publishing screenshots or logs containing keys. The update can fail during local image building; the previous app version should remain available until migration succeeds.
+To update to `0.1.4`, refresh the Home Assistant app repository and select **Update**. **Important:** previously saved app configuration persists, so manually change `MCP_SERVER_URL` to `http://127.0.0.1:8098/mcp` after updating. Keep `MCP_EXTRA_HEADERS` as `X-Ha-Access: env:SUPERVISOR_TOKEN`. Never publish screenshots or logs containing credentials.
 
 ## Security and limitations
 
@@ -73,6 +73,6 @@ To update from the original image-only packaging to `0.1.0`, refresh the Home As
 
 If the tunnel starts but ChatGPT cannot discover the MCP server, check the app logs for `dispatcher received MCP upstream error`. A `401` with `failure_source=target_http` indicates that the upstream Home Assistant endpoint rejected the request, not necessarily that the tunnel failed to connect.
 
-Ensure the saved endpoint is `http://supervisor/core/api/mcp`, not `http://homeassistant/api/mcp`, and that the injected header is `X-Ha-Access: env:SUPERVISOR_TOKEN`.
+Ensure the saved endpoint is `http://127.0.0.1:8098/mcp`, not `http://supervisor/core/api/mcp` (which bypasses the new proxy), and that the injected header is `X-Ha-Access: env:SUPERVISOR_TOKEN`. Expect `mcp_proxy` access logs for the OAuth discovery `404`s and normal MCP requests. If the tunnel still reports `control-plane polling disabled`, collect the new startup errors. The client may continue logging `OAuth discovery failed` for the optional all-404 case; check whether the control-plane poller actually runs.
 
 For debug logging, set `LOG_LEVEL: debug` and `LOG_FORMAT: struct-text` (or `json`); debug logging without a structured log format is rejected by the tunnel client. Avoid posting unredacted debug logs publicly.
