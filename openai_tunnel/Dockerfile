@@ -10,7 +10,7 @@ LABEL io.hass.version="${BUILD_VERSION}" \
       io.hass.type="app" \
       io.hass.arch="${BUILD_ARCH}"
 
-RUN apk add --no-cache nginx && mkdir -p /run/nginx
+RUN apk add --no-cache nginx && mkdir -p /run/nginx && touch /etc/nginx/oauth-empty
 
 COPY --from=tunnel /usr/bin/tunnel-client /usr/local/bin/tunnel-client
 COPY ingress.conf /etc/nginx/http.d/default.conf
