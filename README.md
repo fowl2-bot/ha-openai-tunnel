@@ -1,78 +1,105 @@
 # OpenAI Secure MCP Tunnel for Home Assistant OS
 
-Minimal Home Assistant OS app repository for running OpenAI's [Secure MCP Tunnel](https://github.com/openai/tunnel-client) alongside Home Assistant.
+**Connect ChatGPT to Home Assistant without exposing Home Assistant to the public internet.**
 
-Version `0.1.6` builds a small local HAOS image using OpenAI's unmodified tunnel-client binary from `ghcr.io/openai/tunnel-client:v0.0.20`, the Home Assistant Alpine base and Nginx. Nginx serves the experimental Home Assistant Ingress UI and provides a private MCP proxy that handles missing OAuth metadata correctly. It does **not** install code into Home Assistant Core.
+This community HAOS app runs the [official OpenAI Secure MCP Tunnel client](https://github.com/openai/tunnel-client) in a separate container. It makes an **outbound HTTPS connection** to OpenAI, receives MCP requests from ChatGPT, and forwards them to Home Assistant's built-in MCP server.
 
-> **Status:** Experimental, personal deployment. In earlier versions, the OpenAI client printed a green startup line even while OAuth discovery blocked control-plane polling. v0.1.6 addresses that local discovery problem; end-to-end ChatGPT MCP access is still unverified. This is not a security audit or a supported OpenAI/Home Assistant product.
+You don't need router port forwarding, a public Home Assistant URL, or a manually created Home Assistant access token. You **do** need an OpenAI tunnel and a runtime API key.
 
-## Related projects
+> **Status: experimental, with working read-only access.** On **9 November 2026**, ChatGPT successfully queried a Home Assistant OS 18.4 / Core 2026.11.0 installation (amd64) through this app: system information, integration status, and entity searches. Device control, configuration writes, extended uptime, and the Ingress web UI have **not** been verified end to end. This is neither an official OpenAI nor an official Home Assistant product.
 
-Several independent Home Assistant projects package the same [official OpenAI tunnel client](https://github.com/openai/tunnel-client):
+## Is this the right option?
 
-| Project | Home Assistant packaging | Main distinction |
+This is deliberately simple: **one tunnel, one MCP endpoint, one separate HAOS app**. It packages OpenAI's unmodified Go tunnel-client binary and an Nginx proxy; it installs nothing into Home Assistant Core.
+
+| Option | Why choose it | Trade-off |
 | --- | --- | --- |
-| **[This project](https://github.com/fowl2-bot/ha-openai-tunnel)** | HAOS app (separate container) | One tunnel client, experimental Ingress access to its built-in web UI |
-| **[Home Assistant MCP Tunnel](https://github.com/lukkezen/home-assistant-mcp-tunnel)** | HAOS add-on | Multiple independently configured tunnels; aims to support other providers |
-| **[OpenAI Tunnel for HA-MCP](https://github.com/norpol/hass-codex-tunnel-mcp)** | HACS custom integration (runs inside HA Core) | Home Assistant entities and management UI, verified binary updates and rollback; no embedded upstream web UI |
+| **This app** | Keep the tunnel in a separate HAOS container, with straightforward configuration and logs | Extra Nginx layer, one tunnel, experimental web UI, manually managed upstream client version, high-privilege Home Assistant access |
+| [Home Assistant MCP Tunnel](https://github.com/lukkezen/home-assistant-mcp-tunnel) | Manage **multiple independent tunnels** from one HAOS add-on | A different community-managed add-on, with a broader configuration and lifecycle model |
+| [OpenAI Tunnel for HA-MCP](https://github.com/norpol/hass-codex-tunnel-mcp) | Prefer **native Home Assistant entities and controls**, plus verified binary downloads, automatic updates, and rollback | A HACS custom integration running inside Home Assistant Core; it supervises a Go subprocess and uses an HA token or OAuth |
+| [Official tunnel-client](https://github.com/openai/tunnel-client) on another host | Already have an always-on machine that can reach HA, and want no HAOS app | You manage its service, credentials, updates, and HA authentication yourself |
 
-These are community projects, not official OpenAI or Home Assistant integrations. Choose based on whether you prefer a separate HAOS app, multiple tunnels, or native Home Assistant entities.
+The alternatives aren't dependencies. The comparison reflects their project documentation checked in November 2026. **If native Home Assistant controls are your priority, consider the HACS integration first.**
 
-## Requirements
+## What you'll need
 
-- Home Assistant OS with app/add-on support, on amd64 or aarch64.
-- A tunnel created in your OpenAI Platform account and a runtime API key authorised to use it.
-- Home Assistant's **Model Context Protocol Server** integration (Settings → Devices & services → Add integration).
-- A ChatGPT account/workspace that permits creating a custom MCP plugin.
+1. **Home Assistant OS**, amd64 or aarch64, with the [built-in MCP server](https://www.home-assistant.io/integrations/mcp_server/) enabled. Find it under **Settings → Devices & services**. This app connects to the main `/api/mcp` endpoint.
+2. A tunnel created in [OpenAI Platform → Tunnels](https://platform.openai.com/settings/organization/tunnels), associated with the ChatGPT workspace that will use it.
+3. A **runtime API key** from [OpenAI Platform → API keys](https://platform.openai.com/settings/organization/api-keys) with **Tunnels Read + Use** permission. Creating or managing a tunnel separately requires **Tunnels Read + Manage**. Don't use a Platform admin key as the runtime key.
+4. A ChatGPT workspace/account allowed to create custom MCP apps; enable developer mode if required.
 
-## Install
+OpenAI's [Secure MCP Tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) explains setup, workspace association, and permissions.
 
-1. Open Home Assistant → **Settings → Apps → Install app** → menu **Repositories**.
-2. Add this repository: `https://github.com/fowl2-bot/ha-openai-tunnel`.
-3. Install **OpenAI Secure MCP Tunnel**.
-4. Under its Configuration tab, set:
-   - `CONTROL_PLANE_TUNNEL_ID`: your OpenAI tunnel identifier.
-   - `CONTROL_PLANE_API_KEY`: the tunnel's runtime API key. Do not paste it into GitHub issues or chat logs.
-   - `MCP_SERVER_URL`: `http://127.0.0.1:8098/mcp`.
-   - `MCP_EXTRA_HEADERS`: `X-Ha-Access: env:SUPERVISOR_TOKEN`.
-   - `LOG_LEVEL`: `info`; `LOG_FORMAT`: `struct-text`.
-5. Save, start the app, and inspect its Logs tab. Nginx logs MCP and OAuth discovery requests as `mcp_proxy` lines, including HTTP status and upstream timing (without credentials). Select **Open Web UI** on the app page to inspect tunnel status via Home Assistant Ingress; this UI is still experimental. Do not treat the green `tunnel-client started` line as proof of successful polling.
-6. In ChatGPT, create a **custom MCP plugin** using **Tunnel**, select your tunnel and select **No auth** *only when local Home Assistant authentication via the Supervisor proxy is functioning*.
+## Installation
 
-The Supervisor supplies the `SUPERVISOR_TOKEN` environment variable when `homeassistant_api: true` is enabled. The tunnel client injects the token into its requests to the loopback proxy, which forwards `X-Ha-Access` to the Supervisor Core API. The proxy does not log headers or query parameters. Do not paste or hardcode the token.
+1. In Home Assistant, open **Settings → Apps → Install app → ⋮ → Repositories** and add:
+   `https://github.com/fowl2-bot/ha-openai-tunnel`
+2. Install **OpenAI Secure MCP Tunnel** from that repository.
+3. In its **Configuration** tab, set or confirm:
 
-**Important:** App configuration can persist across upgrades. After updating, inspect both `MCP_SERVER_URL` and `MCP_EXTRA_HEADERS`; new defaults may not replace existing saved values.
+   | Setting | Value |
+   | --- | --- |
+   | `CONTROL_PLANE_TUNNEL_ID` | Your `tunnel_...` identifier |
+   | `CONTROL_PLANE_API_KEY` | Your **runtime** API key (secret) |
+   | `MCP_SERVER_URL` | `http://127.0.0.1:8098/mcp` |
+   | `MCP_EXTRA_HEADERS` | `X-Ha-Access: env:SUPERVISOR_TOKEN` |
+   | `LOG_LEVEL` / `LOG_FORMAT` | `info` / `struct-text` |
 
-## Ingress UI (experimental)
+4. **Save and start** the app. In the **Logs** tab, look for `starting control-plane poller` and a successful MCP session initialization. Make sure there is no `control-plane polling disabled` error.
+5. In [ChatGPT Plugins](https://chatgpt.com/plugins), choose **Add custom MCP server → Tunnel**, select the same tunnel, and choose **No auth**. Review the permission warning and create the private app.
+6. Test with a **read-only** request, such as asking ChatGPT to find an entity in Home Assistant. Successful calls produce Nginx log entries resembling `mcp_proxy "POST /mcp" status=200 upstream=200`.
 
-Home Assistant authenticates the UI. The Nginx Ingress proxy listens for Supervisor Ingress traffic on port `8099` (no host port is published). Separately, the MCP proxy listens only on `127.0.0.1:8098`, returns a empty-body `404` for OAuth metadata paths, and forwards `/mcp` to `supervisor/core/api/mcp` with the original authentication header. OpenAI's admin/health UI stays bound to loopback on port `8080`, with remote UI access disabled.
+**"No auth" applies to the ChatGPT-facing app, not to Home Assistant.** The locally running app still authenticates to Home Assistant through the Supervisor. Only associate the OpenAI tunnel with workspaces you trust.
 
-OpenAI's UI assumes it is hosted at the web root. Ingress instead uses a per-app prefixed URL. Our Nginx proxy rewrites its root-relative asset URLs, API requests and EventSource endpoints. **This is a fragile compatibility layer, not an upstream-supported base-path mode.** It was syntax-checked but has not yet been tested end to end on HAOS. An upstream UI update could break these substitutions.
+**Upgrading from an older version?** HAOS preserves saved settings. Check `MCP_SERVER_URL` and `MCP_EXTRA_HEADERS` after updating: new defaults may not override previously saved values.
 
-To update to `0.1.6`, refresh the Home Assistant app repository and select **Update**. **Important:** previously saved app configuration persists, so manually change `MCP_SERVER_URL` to `http://127.0.0.1:8098/mcp` after updating. Keep `MCP_EXTRA_HEADERS` as `X-Ha-Access: env:SUPERVISOR_TOKEN`. Never publish screenshots or logs containing credentials.
+## How it works
+
+~~~text
+ChatGPT → OpenAI-hosted tunnel endpoint
+                 ↕ outbound polling and responses (HTTPS)
+HAOS app: official tunnel-client
+          → Nginx (loopback only)
+          → Supervisor Core API proxy
+          → Home Assistant MCP server (/api/mcp)
+~~~
+
+Nginx serves two separate purposes:
+
+- **MCP proxy:** Listens only on `127.0.0.1:8098`. Forwards `/mcp` to `http://supervisor/core/api/mcp`, passing an `X-Ha-Access` header populated by `SUPERVISOR_TOKEN`. It returns an empty-body HTTP 404 on local OAuth metadata discovery paths.
+- **Optional Ingress UI:** Port `8099` proxies the upstream client's local admin interface through authenticated Home Assistant Ingress. It rewrites root-relative URLs and JavaScript references, which is **fragile, experimental, and not verified end to end**. A broken UI does not mean the MCP tunnel is broken.
+
+The empty-body 404 is the configuration that worked in our deployment. **We have not established that an empty body is necessary**: upstream code intends to treat any all-404 metadata discovery as optional, and non-empty 404 variants also started the poller in our logs. See [upstream issue #109](https://github.com/openai/tunnel-client/issues/109) for the misleading discovery/readiness diagnostics.
 
 ## Security and limitations
 
-- The tunnel is **outbound-only**: no router port forwarding or Tailscale Funnel is required. It nevertheless enables remote API calls through the OpenAI tunnel and must be treated as a privileged access path.
-- The Supervisor-provided API token can convey broad Home Assistant privileges. `No auth` in ChatGPT means the tunnel's own access controls and this locally injected token are the authentication boundary; it does **not** mean Home Assistant is anonymously accessible to the internet.
-- There is **no per-user OAuth identity or authorisation** in this setup. Do not expose this tunnel to untrusted workspaces or users.
-- A container reduces coupling with Home Assistant Core but is **not** a guarantee of least privilege or security. The app uses the Supervisor/Core API proxy and should be treated as highly privileged.
-- Credentials entered in the Home Assistant app configuration are sensitive. Protect Home Assistant backups and diagnostic exports.
-- The app's version is now independent of the upstream tunnel client's version. The Dockerfile pins upstream client `v0.0.20` but not its image digest; consider digest pinning for stronger reproducibility.
-- The Home Assistant MCP server's supported operations, including any configuration writes, depend on its own implementation and the permissions exposed. HAOS host/disk management is not automatically available through MCP.
-- This repository is **experimental and not fully tested**; the local Supervisor token header and MCP transport still require end-to-end validation.
+**The convenience comes with significant privileges.**
 
-## Repository layout
-
-- `repository.yaml` — Home Assistant app repository metadata.
-- `openai_tunnel/config.yaml` — HAOS app definition and configuration schema.
-- `openai_tunnel/Dockerfile` — locally builds a container with the upstream tunnel client and Nginx.
-- `openai_tunnel/ingress.conf` — restrictive Ingress proxy, including path rewriting for OpenAI's built-in UI.
+- **Private doesn't mean risk-free.** No inbound port or public HA endpoint is required, but authorized OpenAI clients can send requests to your home via the OpenAI-hosted service. Protect tunnel/workspace permissions and credentials.
+- **Administrator access.** The Supervisor Core API proxy executes requests with **Home Assistant administrator privileges**. This app does **not** use a least-privileged HA user. It also cannot attribute actions to individual ChatGPT users using Home Assistant user identities. Avoid shared/untrusted workspaces.
+- **Limit exposed MCP tools.** Home Assistant's main MCP endpoint can offer broad reading and action capabilities. Review its tool selection and, where available in your HA version, configure read-only operation. This app currently hardwires the main endpoint, not individual API paths such as `/api/mcp/assist`.
+- **Protect secrets.** The runtime API key lives in HAOS app settings and the Supervisor token is available to the container. Protect backups and diagnostic exports. Don't paste credentials into issues, logs, or screenshots.
+- **Updates aren't automatic for the upstream client.** The [Dockerfile](openai_tunnel/Dockerfile) currently copies official `tunnel-client v0.0.20`. The app's own version is separate. Upstream images are tag-pinned, not digest-pinned.
+- **Only Home Assistant MCP tools are available.** The tunnel does not automatically provide HAOS disk administration, app installation, or other Supervisor-management operations.
+- **This is for private use.** OpenAI Secure MCP Tunnel does not provide a public plugin-submission mechanism.
 
 ## Troubleshooting
 
-If the tunnel starts but ChatGPT cannot discover the MCP server, check the app logs for `dispatcher received MCP upstream error`. A `401` with `failure_source=target_http` indicates that the upstream Home Assistant endpoint rejected the request, not necessarily that the tunnel failed to connect.
+| Symptom | What it means / what to check |
+| --- | --- |
+| `🟢 tunnel-client started`, but ChatGPT fails | The process started; that line **does not prove polling is working**. Check for `control-plane polling disabled` and attempt a read-only tool call. |
+| `WARN OAuth discovery failed ... 404` | May be **normal** when a no-OAuth MCP server has no metadata. Look for subsequent polling and successful requests, not this warning alone. |
+| `POST /mcp` returns `401` | Verify the loopback URL and `X-Ha-Access: env:SUPERVISOR_TOKEN`. Don't print the actual token. |
+| An initial `POST /mcp` returns `400`, or `GET /mcp` returns `405` | Can be part of the client's startup probes, not a failed user tool call. |
+| ChatGPT says `App setup was rate limited` | The wording doesn't establish the actual cause. Check polling, workspace association, and local requests. If it persists, contact [OpenAI Support](https://help.openai.com/) with a time and timezone, not your credentials. |
+| Ingress UI stays blank or shows a loading screen | The UI proxy is experimental. Use the HAOS app's **Logs** tab instead; MCP works independently of the UI. |
 
-Ensure the saved endpoint is `http://127.0.0.1:8098/mcp`, not `http://supervisor/core/api/mcp` (which bypasses the new proxy), and that the injected header is `X-Ha-Access: env:SUPERVISOR_TOKEN`. Expect `mcp_proxy` access logs for the OAuth discovery `404`s and normal MCP requests. If the tunnel still reports `control-plane polling disabled`, collect the new startup errors. The client may continue logging `OAuth discovery failed` for the optional all-404 case; check whether the control-plane poller actually runs.
+To investigate further, set `LOG_LEVEL: debug` and `LOG_FORMAT: struct-text` (or `json`). The Nginx access log includes request paths, methods, status codes, and durations, **not headers or query strings**. Other logs can contain sensitive information; review before sharing.
 
-For debug logging, set `LOG_LEVEL: debug` and `LOG_FORMAT: struct-text` (or `json`); debug logging without a structured log format is rejected by the tunnel client. Avoid posting unredacted debug logs publicly.
+## Updates, tests and source
+
+Refresh the app repository in HAOS, then select **Update**. See the [app changelog](openai_tunnel/CHANGELOG.md).
+
+GitHub Actions validates metadata, builds amd64/aarch64 images, smoke-tests the amd64 Nginx configuration and client version, and generates releases/changelog entries. **It does not test real HAOS runtime behavior, the ARM64 runtime, device control, or Ingress UI functionality.**
+
+Source: [HAOS app configuration](openai_tunnel/config.yaml) · [Dockerfile](openai_tunnel/Dockerfile) · [Nginx configuration](openai_tunnel/ingress.conf) · [release workflow](.github/workflows/release.yml).
