@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.8 - 2026-11-09
+
+- Docs: rewrite README with verified setup and honest trade-offs
 ## 0.1.7 - 2026-11-09
 
 - Fix: proxy MCP locally and return 404 for OAuth discovery metadata
