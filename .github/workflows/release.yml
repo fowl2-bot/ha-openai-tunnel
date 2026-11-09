@@ -70,7 +70,10 @@ jobs:
             --build-arg BUILD_ARCH=amd64 \
             --build-arg BUILD_VERSION="$VERSION" \
             --load -t ha-openai-tunnel:amd64 ./openai_tunnel
-          docker run --rm --entrypoint nginx ha-openai-tunnel:amd64 -t
+          # Supervisor hostname exists only on the HAOS app network.
+          # Give nginx -t a local placeholder so CI validates configuration syntax.
+          docker run --rm --add-host supervisor:127.0.0.1 \
+            --entrypoint nginx ha-openai-tunnel:amd64 -t
           docker run --rm --entrypoint /usr/local/bin/tunnel-client \
             ha-openai-tunnel:amd64 --version
 
