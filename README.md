@@ -2,9 +2,9 @@
 
 Minimal Home Assistant OS app repository for running OpenAI's [Secure MCP Tunnel](https://github.com/openai/tunnel-client) alongside Home Assistant.
 
-Version `0.1.4` builds a small local HAOS image using OpenAI's unmodified tunnel-client binary from `ghcr.io/openai/tunnel-client:v0.0.20`, the Home Assistant Alpine base and Nginx. Nginx serves the experimental Home Assistant Ingress UI and provides a private MCP proxy that handles missing OAuth metadata correctly. It does **not** install code into Home Assistant Core.
+Version `0.1.5` builds a small local HAOS image using OpenAI's unmodified tunnel-client binary from `ghcr.io/openai/tunnel-client:v0.0.20`, the Home Assistant Alpine base and Nginx. Nginx serves the experimental Home Assistant Ingress UI and provides a private MCP proxy that handles missing OAuth metadata correctly. It does **not** install code into Home Assistant Core.
 
-> **Status:** Experimental, personal deployment. In earlier versions, the OpenAI client printed a green startup line even while OAuth discovery blocked control-plane polling. v0.1.4 addresses that local discovery problem; end-to-end ChatGPT MCP access is still unverified. This is not a security audit or a supported OpenAI/Home Assistant product.
+> **Status:** Experimental, personal deployment. In earlier versions, the OpenAI client printed a green startup line even while OAuth discovery blocked control-plane polling. v0.1.5 addresses that local discovery problem; end-to-end ChatGPT MCP access is still unverified. This is not a security audit or a supported OpenAI/Home Assistant product.
 
 ## Related projects
 
@@ -45,11 +45,11 @@ The Supervisor supplies the `SUPERVISOR_TOKEN` environment variable when `homeas
 
 ## Ingress UI (experimental)
 
-Home Assistant authenticates the UI. The Nginx Ingress proxy listens for Supervisor Ingress traffic on port `8099` (no host port is published). Separately, the MCP proxy listens only on `127.0.0.1:8098`, returns `404` for OAuth metadata paths, and forwards `/mcp` to `supervisor/core/api/mcp` with the original authentication header. OpenAI's admin/health UI stays bound to loopback on port `8080`, with remote UI access disabled.
+Home Assistant authenticates the UI. The Nginx Ingress proxy listens for Supervisor Ingress traffic on port `8099` (no host port is published). Separately, the MCP proxy listens only on `127.0.0.1:8098`, returns a JSON-bodied `404` for OAuth metadata paths, and forwards `/mcp` to `supervisor/core/api/mcp` with the original authentication header. OpenAI's admin/health UI stays bound to loopback on port `8080`, with remote UI access disabled.
 
 OpenAI's UI assumes it is hosted at the web root. Ingress instead uses a per-app prefixed URL. Our Nginx proxy rewrites its root-relative asset URLs, API requests and EventSource endpoints. **This is a fragile compatibility layer, not an upstream-supported base-path mode.** It was syntax-checked but has not yet been tested end to end on HAOS. An upstream UI update could break these substitutions.
 
-To update to `0.1.4`, refresh the Home Assistant app repository and select **Update**. **Important:** previously saved app configuration persists, so manually change `MCP_SERVER_URL` to `http://127.0.0.1:8098/mcp` after updating. Keep `MCP_EXTRA_HEADERS` as `X-Ha-Access: env:SUPERVISOR_TOKEN`. Never publish screenshots or logs containing credentials.
+To update to `0.1.5`, refresh the Home Assistant app repository and select **Update**. **Important:** previously saved app configuration persists, so manually change `MCP_SERVER_URL` to `http://127.0.0.1:8098/mcp` after updating. Keep `MCP_EXTRA_HEADERS` as `X-Ha-Access: env:SUPERVISOR_TOKEN`. Never publish screenshots or logs containing credentials.
 
 ## Security and limitations
 
