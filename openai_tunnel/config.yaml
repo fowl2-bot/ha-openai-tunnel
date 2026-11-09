@@ -1,5 +1,5 @@
 name: OpenAI Secure MCP Tunnel
-version: "0.1.3"
+version: "0.1.4"
 slug: openai_tunnel
 description: Outbound-only OpenAI MCP tunnel with private Home Assistant Ingress UI
 url: https://github.com/fowl2-bot/ha-openai-tunnel
@@ -21,7 +21,7 @@ startup: application
 boot: manual
 options:
   CONTROL_PLANE_TUNNEL_ID: null
-  MCP_SERVER_URL: http://supervisor/core/api/mcp
+  MCP_SERVER_URL: http://127.0.0.1:8098/mcp
   MCP_EXTRA_HEADERS: "X-Ha-Access: env:SUPERVISOR_TOKEN"
   LOG_LEVEL: info
   LOG_FORMAT: struct-text
