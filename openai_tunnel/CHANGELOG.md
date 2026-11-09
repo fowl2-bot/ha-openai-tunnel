@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.7 - 2026-11-09
+
+- Fix: proxy MCP locally and return 404 for OAuth discovery metadata
+
+- Docs: explain private MCP proxy, safe logs and upgrade settings
+
+- Release: 0.1.4 with loopback MCP proxy default
+
+- Fix: preserve nginx access logs in HAOS app output
+
+- Fix: return JSON 404 for optional OAuth discovery
+
+- Release: v0.1.5 JSON OAuth discovery fallback
+
+- Docs: explain v0.1.5 JSON 404 OAuth fallback
+
+- Fix: create empty response file for OAuth discovery 404
+
+- Fix: use genuinely empty 404 discovery responses
+
+- Release: v0.1.6 zero-byte OAuth discovery 404
+
+- Docs: update 0.1.6 OAuth discovery workaround
+
+- Ci: resolve HAOS-only supervisor hostname in nginx smoke test
 ## 0.1.3 - 2026-11-08
 
 - Document related HAOS and HACS tunnel projects in README comparison
