@@ -16,5 +16,6 @@ COPY --from=tunnel /usr/bin/tunnel-client /usr/local/bin/tunnel-client
 COPY ingress.conf /etc/nginx/http.d/default.conf
 
 # S6 strips the container environment from CMD unless with-contenv restores it.
-# Admin UI listens only on loopback; Supervisor ingress connects through Nginx.
-CMD ["/command/with-contenv", "/bin/sh", "-ec", "export HEALTH_LISTEN_ADDR=127.0.0.1:8080 ALLOW_REMOTE_UI=false; nginx && exec /usr/local/bin/tunnel-client run"]
+# Admin UI and MCP proxy listen only on loopback; Supervisor ingress uses Nginx.
+# Keep nginx in foreground mode (as a background job) so safe access logs reach HAOS Logs.
+CMD ["/command/with-contenv", "/bin/sh", "-ec", "export HEALTH_LISTEN_ADDR=127.0.0.1:8080 ALLOW_REMOTE_UI=false; nginx -t; nginx -g 'daemon off;' & exec /usr/local/bin/tunnel-client run"]
