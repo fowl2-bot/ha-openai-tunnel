@@ -1,0 +1,32 @@
+name: OpenAI Secure MCP Tunnel (OAuth Test)
+version: "0.1.10"
+slug: openai_tunnel_oauth
+description: Separate, experimental per-user OAuth tunnel for Home Assistant
+url: https://github.com/fowl2-bot/ha-openai-tunnel
+arch:
+  - amd64
+  - aarch64
+legacy: true
+ingress: true
+ingress_port: 8099
+ingress_entry: /
+ingress_stream: true
+panel_admin: true
+stage: experimental
+panel_icon: mdi:account-key
+panel_title: MCP OAuth Test
+homeassistant_api: false
+init: false
+startup: application
+boot: manual
+options:
+  CONTROL_PLANE_TUNNEL_ID: null
+  MCP_SERVER_URL: http://127.0.0.1:8098/mcp
+  LOG_LEVEL: info
+  LOG_FORMAT: struct-text
+schema:
+  CONTROL_PLANE_TUNNEL_ID: str
+  CONTROL_PLANE_API_KEY: password
+  MCP_SERVER_URL: str
+  LOG_LEVEL: list(debug|info|warn|error)
+  LOG_FORMAT: list(struct-text|json)

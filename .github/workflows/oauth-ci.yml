@@ -1,0 +1,48 @@
+name: Validate OAuth test add-on
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "openai_tunnel_oauth/**"
+      - ".github/workflows/oauth-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate HAOS metadata
+        shell: bash
+        run: |
+          python -m pip install --quiet PyYAML
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          cfg = yaml.safe_load(Path("openai_tunnel_oauth/config.yaml").read_text())
+          assert cfg["slug"] == "openai_tunnel_oauth"
+          assert cfg["homeassistant_api"] is False
+          assert "MCP_EXTRA_HEADERS" not in cfg.get("options", {})
+          print("OAuth app metadata and isolation: OK")
+          PY
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and validate Nginx and startup diagnostic
+        shell: bash
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --build-arg BUILD_ARCH=amd64 \
+            --build-arg BUILD_VERSION=0.1.10 \
+            --load -t ha-openai-tunnel-oauth:ci ./openai_tunnel_oauth
+          docker run --rm --add-host homeassistant:127.0.0.1 \
+            --entrypoint nginx ha-openai-tunnel-oauth:ci -t
+          docker run --rm --entrypoint sh \
+            ha-openai-tunnel-oauth:ci -n /usr/local/share/oauth-diagnostic.sh
+          docker run --rm --entrypoint /usr/local/bin/tunnel-client \
+            ha-openai-tunnel-oauth:ci --version

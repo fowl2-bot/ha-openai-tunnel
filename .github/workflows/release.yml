@@ -36,21 +36,30 @@ jobs:
           from pathlib import Path
           import yaml
 
-          for file in ("repository.yaml", "openai_tunnel/config.yaml"):
+          for file in ("repository.yaml", "openai_tunnel/config.yaml", "openai_tunnel_oauth/config.yaml"):
               data = yaml.safe_load(Path(file).read_text())
               assert isinstance(data, dict), f"{file}: expected a YAML mapping"
 
           with open("cliff.toml", "rb") as f:
               tomllib.load(f)
 
-          path = Path("openai_tunnel/config.yaml")
-          content = path.read_text()
-          match = re.search(r'^version: "(\d+)\.(\d+)\.(\d+)"$', content, re.M)
-          assert match, "Expected a three-part app version"
+          # Both app variants share releases but have independent HAOS slugs.
+          # Ensure they start from the same version before publishing.
+          versions = []
+          for path in map(Path, ("openai_tunnel/config.yaml", "openai_tunnel_oauth/config.yaml")):
+              content = path.read_text()
+              match = re.search(r'^version: "(\d+)\.(\d+)\.(\d+)"$', content, re.M)
+              assert match, f"{path}: expected a three-part app version"
+              versions.append(tuple(map(int, match.groups())))
+          assert versions[0] == versions[1], f"App versions do not match: {versions}"
 
-          major, minor, patch = map(int, match.groups())
+          major, minor, patch = versions[0]
           version = f"{major}.{minor}.{patch + 1}"
-          path.write_text(content.replace(match.group(0), f'version: "{version}"', 1))
+          for path in map(Path, ("openai_tunnel/config.yaml", "openai_tunnel_oauth/config.yaml")):
+              content = path.read_text()
+              content, count = re.subn(r'^version: "[^"]+"$', f'version: "{version}"', content, count=1, flags=re.M)
+              assert count == 1
+              path.write_text(content)
 
           with open(os.environ["GITHUB_ENV"], "a") as env:
               env.write(f"VERSION={version}\n")
@@ -77,6 +86,19 @@ jobs:
           docker run --rm --entrypoint /usr/local/bin/tunnel-client \
             ha-openai-tunnel:amd64 --version
 
+      - name: Build and smoke-test OAuth variant (amd64)
+        shell: bash
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --build-arg BUILD_ARCH=amd64 \
+            --build-arg BUILD_VERSION="$VERSION" \
+            --load -t ha-openai-tunnel-oauth:amd64 ./openai_tunnel_oauth
+          docker run --rm --add-host homeassistant:127.0.0.1 \
+            --entrypoint nginx ha-openai-tunnel-oauth:amd64 -t
+          docker run --rm --entrypoint /usr/local/bin/tunnel-client \
+            ha-openai-tunnel-oauth:amd64 --version
+
       - name: Build aarch64
         shell: bash
         run: |
@@ -85,6 +107,15 @@ jobs:
             --build-arg BUILD_ARCH=aarch64 \
             --build-arg BUILD_VERSION="$VERSION" \
             --output=type=cacheonly ./openai_tunnel
+
+      - name: Build OAuth variant (aarch64)
+        shell: bash
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --build-arg BUILD_ARCH=aarch64 \
+            --build-arg BUILD_VERSION="$VERSION" \
+            --output=type=cacheonly ./openai_tunnel_oauth
 
       - name: Install git-cliff
         uses: taiki-e/install-action@v2
@@ -110,7 +141,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add openai_tunnel/config.yaml openai_tunnel/CHANGELOG.md
+          git add openai_tunnel/config.yaml openai_tunnel_oauth/config.yaml openai_tunnel/CHANGELOG.md
           git diff --cached --check
           git commit -m "chore(release): v$VERSION"
           git tag -a "v$VERSION" -m "Release v$VERSION"
