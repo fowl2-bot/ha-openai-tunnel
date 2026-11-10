@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.10 - 2026-11-10
+
+- Test: add HAOS systemd/cgroup feasibility probe (#2)
+
+* test: add systemd feasibility probe (config.yaml)
+
+* test: add systemd feasibility probe (Dockerfile)
+
+* test: add systemd feasibility probe (start-probe.sh)
+
+* test: add systemd feasibility probe (unit-probe.sh)
+
+* test: add systemd feasibility probe (haos-systemd-probe.service)
+
+* test: add systemd feasibility probe (README.md)
+
+* ci: validate disposable HAOS systemd probe image
 ## 0.1.9 - 2026-11-10
 
 - Test: log local Home Assistant OAuth metadata availability at startup (#1)

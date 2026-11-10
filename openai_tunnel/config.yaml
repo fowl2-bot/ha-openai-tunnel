@@ -1,5 +1,5 @@
 name: OpenAI Secure MCP Tunnel
-version: "0.1.9"
+version: "0.1.10"
 slug: openai_tunnel
 description: Outbound-only OpenAI MCP tunnel with private Home Assistant Ingress UI
 url: https://github.com/fowl2-bot/ha-openai-tunnel
