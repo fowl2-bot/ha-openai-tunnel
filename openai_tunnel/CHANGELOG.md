@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.9 - 2026-11-10
+
+- Test: log local Home Assistant OAuth metadata availability at startup (#1)
+
+* test: add read-only startup probe of internal Home Assistant OAuth metadata
+
+* test: run nonblocking OAuth metadata diagnostics at tunnel startup
 ## 0.1.8 - 2026-11-09
 
 - Docs: rewrite README with verified setup and honest trade-offs
