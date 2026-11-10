@@ -1,0 +1,12 @@
+[Unit]
+Description=HAOS systemd cgroup feasibility probe
+After=basic.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/unit-probe.sh
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

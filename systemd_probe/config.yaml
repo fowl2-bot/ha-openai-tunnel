@@ -1,0 +1,11 @@
+name: "Systemd feasibility probe"
+version: "0.1.0"
+slug: "systemd_probe"
+description: "Disposable systemd/cgroup test for Home Assistant OS (not for production)"
+arch:
+  - amd64
+stage: experimental
+startup: services
+boot: manual_only
+init: false
+timeout: 20

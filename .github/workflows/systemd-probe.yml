@@ -1,0 +1,46 @@
+name: Validate HAOS systemd probe
+
+on:
+  pull_request:
+    paths:
+      - "systemd_probe/**"
+      - ".github/workflows/systemd-probe.yml"
+  push:
+    branches: [main]
+    paths:
+      - "systemd_probe/**"
+      - ".github/workflows/systemd-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check manifest and scripts
+        run: |
+          python -m pip install --quiet PyYAML
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          manifest = yaml.safe_load(Path("systemd_probe/config.yaml").read_text())
+          assert manifest["slug"] == "systemd_probe"
+          assert manifest["arch"] == ["amd64"]
+          assert manifest["boot"] == "manual_only"
+          assert manifest["init"] is False
+          assert "image" not in manifest
+          PY
+          sh -n systemd_probe/start-probe.sh systemd_probe/unit-probe.sh
+      - name: Build probe image
+        run: docker build --build-arg BUILD_VERSION=0.1.0 --build-arg BUILD_ARCH=amd64 -t haos-systemd-probe:test ./systemd_probe
+      - name: Check probe files inside image
+        run: |
+          docker run --rm --entrypoint /bin/sh haos-systemd-probe:test -ec '
+            test -x /usr/local/bin/start-probe.sh
+            test -x /usr/local/bin/unit-probe.sh
+            test -f /etc/systemd/system/haos-systemd-probe.service
+            test -x /lib/systemd/systemd
+            sh -n /usr/local/bin/start-probe.sh /usr/local/bin/unit-probe.sh
+          '
