@@ -30,6 +30,12 @@ The alternatives aren't dependencies. The comparison reflects their project docu
 
 OpenAI's [Secure MCP Tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) explains setup, workspace association, and permissions.
 
+## Experimental per-user OAuth variant
+
+This repository also provides a **second, independent HAOS app**, **OpenAI Secure MCP Tunnel (OAuth Test)**, from `openai_tunnel_oauth/`. It does not replace the working no-auth app. To try it, install that app separately and configure a **new OpenAI tunnel ID**, using the same restricted runtime API key if permitted. The test variant talks to HA Core directly and forwards each caller's OAuth bearer token rather than using Supervisor admin access.
+
+The variant proxies OAuth metadata using the verified local `dawnha.local` hostname, and checks connectivity in its own logs (`oauth_probe`). The local **HTTP** authorization URL is experimental: ChatGPT OAuth compatibility, token exchange, refresh, and per-user attribution remain untested. The original app continues to work independently.
+
 ## Installation
 
 1. In Home Assistant, open **Settings → Apps → Install app → ⋮ → Repositories** and add:
