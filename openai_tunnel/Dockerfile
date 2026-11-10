@@ -14,8 +14,9 @@ RUN apk add --no-cache nginx && mkdir -p /run/nginx && touch /etc/nginx/oauth-em
 
 COPY --from=tunnel /usr/bin/tunnel-client /usr/local/bin/tunnel-client
 COPY ingress.conf /etc/nginx/http.d/default.conf
+COPY oauth-diagnostic.sh /usr/local/share/oauth-diagnostic.sh
 
 # S6 strips the container environment from CMD unless with-contenv restores it.
 # Admin UI and MCP proxy listen only on loopback; Supervisor ingress uses Nginx.
 # Keep nginx in foreground mode (as a background job) so safe access logs reach HAOS Logs.
-CMD ["/command/with-contenv", "/bin/sh", "-ec", "export HEALTH_LISTEN_ADDR=127.0.0.1:8080 ALLOW_REMOTE_UI=false; nginx -t; nginx -g 'daemon off;' & exec /usr/local/bin/tunnel-client run"]
+CMD ["/command/with-contenv", "/bin/sh", "-ec", "export HEALTH_LISTEN_ADDR=127.0.0.1:8080 ALLOW_REMOTE_UI=false; nginx -t; sh /usr/local/share/oauth-diagnostic.sh; nginx -g 'daemon off;' & exec /usr/local/bin/tunnel-client run"]
