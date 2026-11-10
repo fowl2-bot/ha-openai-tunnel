@@ -102,10 +102,23 @@ The empty-body 404 is the configuration that worked in our deployment. **We have
 
 To investigate further, set `LOG_LEVEL: debug` and `LOG_FORMAT: struct-text` (or `json`). The Nginx access log includes request paths, methods, status codes, and durations, **not headers or query strings**. Other logs can contain sensitive information; review before sharing.
 
+## Repository apps and CI
+
+This repository currently contains three separately installable HAOS apps: the standard tunnel, the experimental [OAuth tunnel](openai_tunnel_oauth/README.md), and the [systemd/cgroup probe](systemd_probe/README.md). Their versions and lifecycles are independent.
+
+The [release workflow](.github/workflows/release.yml) discovers **all top-level directories with a `config.yaml`** and a Dockerfile or external `image`. Each declares its own `slug`, `version`, and `arch`. Adding a fourth app needs no workflow edits.
+
+- Pull requests validate all manifests and build affected apps; shared CI changes rebuild all apps.
+- Each buildable app is checked for each declared architecture. Optional `smoke-test.sh` scripts run for AMD64 builds, receiving `IMAGE_TAG`.
+- Changes to an app on `main` produce only that app's patch version, changelog, and tag (e.g. `openai_tunnel_oauth/v0.1.12`).
+- Updating CI, a smoke test, or a changelog alone never forces unrelated app releases. Historical global `vX.Y.Z` tags remain as the initial baseline.
+
+These are packaging checks, **not live HAOS integration tests**.
+
 ## Updates, tests and source
 
 Refresh the app repository in HAOS, then select **Update**. See the [app changelog](openai_tunnel/CHANGELOG.md).
 
-GitHub Actions validates metadata, builds amd64/aarch64 images, smoke-tests the amd64 Nginx configuration and client version, and generates releases/changelog entries. **It does not test real HAOS runtime behavior, the ARM64 runtime, device control, or Ingress UI functionality.**
+GitHub Actions validates app metadata, builds each app for its declared architectures, runs per-app AMD64 smoke checks, and releases only changed apps. **It does not test real HAOS runtime behavior, the ARM64 runtime, device control, or Ingress UI functionality.**
 
 Source: [HAOS app configuration](openai_tunnel/config.yaml) · [Dockerfile](openai_tunnel/Dockerfile) · [Nginx configuration](openai_tunnel/ingress.conf) · [release workflow](.github/workflows/release.yml).
