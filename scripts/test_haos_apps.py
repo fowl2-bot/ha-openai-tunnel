@@ -80,6 +80,28 @@ class AppPlannerTests(unittest.TestCase):
         result = self.plan(base="HEAD^")
         self.assertEqual(json.loads(result["releases"]), ["one"])
 
+    def test_release_updates_only_selected_app(self):
+        self.commit("two/Dockerfile", "FROM scratch\\n# new package\\n")
+        tags = Path("app-tags.txt")
+        with contextlib.redirect_stdout(io.StringIO()):
+            haos_apps.release(type("Args", (), {
+                "apps_json": '["two"]', "tags_output": str(tags)
+            })())
+        self.assertIn('version: "0.1.1"', Path("two/config.yaml").read_text())
+        self.assertIn('version: "0.1.0"', Path("one/config.yaml").read_text())
+        self.assertIn("change two/Dockerfile", Path("two/CHANGELOG.md").read_text())
+        self.assertEqual(tags.read_text(), "two/v0.1.1\\n")
+
+    def test_external_image_app_does_not_require_build(self):
+        Path("three/Dockerfile").unlink()
+        self.commit("three/config.yaml", (
+            'name: "three"\\nslug: three\\nversion: "0.1.0"\\n'
+            'arch:\\n  - amd64\\nimage: "example.invalid/media:1"\\n'
+        ))
+        result = self.plan(base="HEAD^")
+        self.assertEqual(json.loads(result["releases"]), ["three"])
+        self.assertEqual(json.loads(result["matrix"])["include"], [])
+
     def test_pr_changed_app_and_shared_change(self):
         self.commit("three/Dockerfile", "FROM scratch\n# PR\n")
         result = self.plan(event="pr", base="v0.1.10")
