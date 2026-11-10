@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.1.11 - 2026-11-10
+
+- Feat: add isolated OAuth test tunnel add-on (#3)
+
+* feat(oauth): add separate test add-on file ingress.conf
+
+* feat(oauth): add separate test add-on file Dockerfile
+
+* feat(oauth): add separate test add-on file config.yaml
+
+* feat(oauth): add separate test add-on file oauth-diagnostic.sh
+
+* feat(oauth): add separate test add-on file README.md
+
+* build: test and release both HAOS tunnel variants
+
+* build: align OAuth test add-on version with existing release
+
+* docs: explain separate experimental OAuth test add-on
+
+* fix(oauth): exclude legacy no-auth server block from isolated proxy
+
+* ci(oauth): validate isolated HAOS app before merge
 ## 0.1.10 - 2026-11-10
 
 - Test: add HAOS systemd/cgroup feasibility probe (#2)
