@@ -87,11 +87,11 @@ def manifest_at(ref: str, app: dict):
     return old
 
 
-def relevant_changes(app: dict, ref: str) -> bool:
+def relevant_changes(app: dict, ref: str, release_only: bool = True) -> bool:
     paths = git("diff", "--name-only", ref, "HEAD", "--", f"{app['path']}/").splitlines()
     for path in paths:
         relative = Path(path).relative_to(app["path"])
-        if relative.as_posix() in NON_RELEASE_FILES:
+        if release_only and relative.as_posix() in NON_RELEASE_FILES:
             continue
         if relative.as_posix() == "config.yaml":
             current = yaml.safe_load((Path(app["path"]) / "config.yaml").read_text())
@@ -130,18 +130,26 @@ def plan(args):
         base = args.base
         shared = git("diff", "--name-only", base, "HEAD", "--",
                      "scripts/", ".github/workflows/", "repository.yaml").splitlines()
-        selected = [app for app in discovered if shared or relevant_changes(app, base)]
+        selected = [app for app in discovered
+                    if shared or relevant_changes(app, base, release_only=False)]
+        to_release = []
     else:
-        selected = [app for app in discovered if relevant_changes(app, current_baseline(app))]
+        shared_base = args.base or "HEAD^"
+        shared = git("diff", "--name-only", shared_base, "HEAD", "--",
+                     "scripts/", ".github/workflows/", "repository.yaml").splitlines()
+        to_release = [app for app in discovered if relevant_changes(app, current_baseline(app))]
+        selected = [app for app in discovered
+                    if shared or relevant_changes(app, current_baseline(app), release_only=False)]
+    release_names = {app["path"] for app in to_release}
     builds = []
     for app in selected:
         if not app["build"]:
             continue
-        version = app["version"] if args.event == "pr" else bump(app["version"])
+        version = bump(app["version"]) if app["path"] in release_names else app["version"]
         for arch in app["arch"]:
             builds.append({"app": app["path"], "arch": arch, "platform": PLATFORMS[arch],
                            "slug": app["slug"], "version": version})
-    releases = [app["path"] for app in selected]
+    releases = [app["path"] for app in to_release]
     payload = {"matrix": {"include": builds}, "build_count": str(len(builds)),
                "releases": releases, "app_count": str(len(discovered))}
     for key, value in payload.items():
