@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: haos-release-main
@@ -76,6 +76,8 @@ jobs:
 
   release:
     needs: [discover, build]
+    permissions:
+      contents: write
     if: >-
       always() && github.event_name == 'push' &&
       needs.discover.result == 'success' &&
