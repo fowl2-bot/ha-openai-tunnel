@@ -29,6 +29,7 @@ jobs:
           assert "MCP_EXTRA_HEADERS" not in cfg.get("options", {})
           assert cfg["options"]["HA_OAUTH_ORIGIN"] == "http://dawnha.local"
           assert "MCP_SERVER_URL" not in cfg["options"]
+          assert cfg["schema"]["MCP_SERVER_URL"] == "str?"
           nginx = Path("openai_tunnel_oauth/ingress.conf").read_text()
           assert "listen 127.0.0.1:__HA_LISTEN_PORT__;" in nginx
           assert "location = /auth/token" in nginx
@@ -53,6 +54,7 @@ jobs:
             --load -t ha-openai-tunnel-oauth:ci ./openai_tunnel_oauth
           docker run --rm --add-host homeassistant:127.0.0.1 \
             -e HA_OAUTH_ORIGIN=http://example.local:8123 \
+            -e MCP_SERVER_URL=http://127.0.0.1:8098/mcp \
             --entrypoint sh ha-openai-tunnel-oauth:ci -ec \
             '. /usr/local/bin/oauth-setup.sh; nginx -t; grep -q "127.0.0.1:8123" /etc/nginx/http.d/default.conf; grep -q "Host example.local:8123" /etc/nginx/http.d/default.conf'
           docker run --rm --add-host homeassistant:127.0.0.1 \

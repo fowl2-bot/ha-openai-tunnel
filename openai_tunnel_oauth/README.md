@@ -13,7 +13,7 @@ The value must be an origin only (scheme, hostname and optional port; no path). 
 
 HTTP mode creates a container-only `/etc/hosts` entry and a loopback HTTP proxy, with a narrowly scoped Harpoon hostname rule. HTTPS mode uses a local MCP proxy but advertises the configured external issuer and explicitly permits OAuth discovery and forwarding to that HTTPS origin; the app must be able to reach it. In both modes, bearer tokens are forwarded to Home Assistant Core; no Supervisor token is supplied.
 
-The `MCP_SERVER_URL` is derived automatically; previously saved values are ignored, so upgrading from versions 0.1.11/0.1.12 does not require changing that option.
+The `MCP_SERVER_URL` is derived automatically. Existing saved `MCP_SERVER_URL` values from 0.1.11/0.1.12 are accepted for compatibility but **ignored** at startup. New installations do not need to configure it. Users can remove the stale key from the app options when convenient.
 
 **Security:** Plain HTTP is for local experiments only. Prefer HTTPS for normal use. Neither mode is production-ready until browser authorization, token exchange, refresh, and per-user access control are verified.
 
