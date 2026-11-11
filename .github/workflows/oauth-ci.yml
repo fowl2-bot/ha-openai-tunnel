@@ -27,6 +27,15 @@ jobs:
           assert cfg["slug"] == "openai_tunnel_oauth"
           assert cfg["homeassistant_api"] is False
           assert "MCP_EXTRA_HEADERS" not in cfg.get("options", {})
+          assert cfg["options"]["MCP_SERVER_URL"] == "http://dawnha.local/mcp"
+          nginx = Path("openai_tunnel_oauth/ingress.conf").read_text()
+          assert "listen 127.0.0.1:80;" in nginx
+          assert "location = /auth/token" in nginx
+          assert "location = /auth/revoke" in nginx
+          assert "http://supervisor" not in nginx
+          dockerfile = Path("openai_tunnel_oauth/Dockerfile").read_text()
+          assert "HARPOON_HOSTS_INCLUDE_REGEX" in dockerfile
+          assert "127.0.0.1 dawnha.local" in dockerfile
           print("OAuth app metadata and isolation: OK")
           PY
 
