@@ -1,5 +1,5 @@
 name: OpenAI Secure MCP Tunnel (OAuth Test)
-version: "0.1.13"
+version: "0.1.14"
 slug: openai_tunnel_oauth
 description: Separate, experimental per-user OAuth tunnel for Home Assistant
 url: https://github.com/fowl2-bot/ha-openai-tunnel
