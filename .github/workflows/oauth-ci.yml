@@ -60,7 +60,11 @@ jobs:
           docker run --rm --add-host homeassistant:127.0.0.1 \
             -e HA_OAUTH_ORIGIN=https://example.ts.net \
             --entrypoint sh ha-openai-tunnel-oauth:ci -ec \
-            '. /usr/local/bin/oauth-setup.sh; nginx -t; grep -q "127.0.0.1:8098" /etc/nginx/http.d/default.conf; test "$MCP_OAUTH_TRUSTED_ORIGINS" = "https://example.ts.net"'
+            '. /usr/local/bin/oauth-setup.sh; nginx -t; grep -q "127.0.0.1:8098" /etc/nginx/http.d/default.conf; grep -q "Host example.ts.net:443;" /etc/nginx/http.d/default.conf; test "$MCP_OAUTH_TRUSTED_ORIGINS" = "https://example.ts.net"'
+          docker run --rm --add-host homeassistant:127.0.0.1 \
+            -e HA_OAUTH_ORIGIN=https://example.ts.net:8443 \
+            --entrypoint sh ha-openai-tunnel-oauth:ci -ec \
+            '. /usr/local/bin/oauth-setup.sh; nginx -t; grep -q "Host example.ts.net:8443;" /etc/nginx/http.d/default.conf'
           if docker run --rm -e HA_OAUTH_ORIGIN=http://bad.local/path \
             --entrypoint sh ha-openai-tunnel-oauth:ci -ec '. /usr/local/bin/oauth-setup.sh'; then
             echo 'Invalid origin was accepted'; exit 1
