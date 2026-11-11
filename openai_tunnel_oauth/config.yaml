@@ -21,7 +21,7 @@ startup: application
 boot: manual
 options:
   CONTROL_PLANE_TUNNEL_ID: null
-  MCP_SERVER_URL: http://127.0.0.1:8098/mcp
+  MCP_SERVER_URL: http://dawnha.local/mcp
   LOG_LEVEL: info
   LOG_FORMAT: struct-text
 schema:
