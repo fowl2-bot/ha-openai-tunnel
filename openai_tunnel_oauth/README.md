@@ -9,7 +9,7 @@ Set `HA_OAUTH_ORIGIN` in the add-on configuration to the URL used by your browse
 - `http://dawnha.local` — **existing local HTTP default** (kept for compatibility). Other local HTTP hostnames and ports are supported.
 - `https://your-host.example` — an externally accessible HTTPS origin, such as a reverse proxy, Home Assistant Cloud, or Tailscale Serve. **Experimental**: token and revocation routing from the container to that HTTPS origin is not yet end-to-end verified.
 
-The value must be an origin only (scheme, hostname and optional port; no path). It must match a configured Home Assistant URL, otherwise discovery may return missing or relative metadata. All connections through this test app are private to the selected OpenAI tunnel.
+The value must be an origin only (scheme, hostname and optional port; no path). It must match a configured Home Assistant URL, otherwise discovery may return missing or relative metadata. For an HTTPS origin without an explicit port, the internal proxy sends `Host: hostname:443` to Core so Home Assistant identifies the HTTPS URL even though the proxy connection is HTTP. All connections through this test app are private to the selected OpenAI tunnel.
 
 HTTP mode creates a container-only `/etc/hosts` entry and a loopback HTTP proxy, with a narrowly scoped Harpoon hostname rule. HTTPS mode uses a local MCP proxy but advertises the configured external issuer and explicitly permits OAuth discovery and forwarding to that HTTPS origin; the app must be able to reach it. In both modes, bearer tokens are forwarded to Home Assistant Core; no Supervisor token is supplied.
 
