@@ -1,18 +1,25 @@
 # OAuth test variant
 
-This is a separate Home Assistant OS app cloned from **OpenAI Secure MCP Tunnel**. It never replaces the existing working no-auth app.
+Independent of the working no-auth Home Assistant app. A **different OpenAI tunnel ID** is required.
 
-- **Use a different OpenAI tunnel ID** from the working app. Both may share the same restricted runtime API key if its permissions allow both tunnels.
-- The proxy talks directly to Home Assistant Core at `http://homeassistant/api/mcp`, passing each caller's `Authorization: Bearer` token. No `SUPERVISOR_TOKEN` or `X-Ha-Access` injection.
-- The app maps `dawnha.local` to a loopback-only Nginx proxy **inside its own container**. The MCP endpoint and Home Assistant OAuth issuer consequently share the same `http://dawnha.local` origin, allowing the tunnel to discover auth metadata and auto-register Harpoon token/revocation targets without a separate-origin exception. External DNS and the existing no-auth app are untouched.
-- This is a **local HTTP experiment**, not a production-secure OAuth deployment. Browser access and token refresh through OpenAI Harpoon are **unverified**; ChatGPT may reject the HTTP issuer.
-- The OAuth token and revocation endpoints are proxied internally to HA Core; only the browser authorization endpoint is direct. Startup logs include `oauth_probe` checks for same-origin metadata.
-- The only inbound HTTP listener is on container loopback; the admin UI uses the authenticated HAOS Ingress listener.
+## Configuring the OAuth origin (version 0.1.13+)
 
-## Start
+Set `HA_OAUTH_ORIGIN` in the add-on configuration to the URL used by your browser for Home Assistant:
 
-1. Refresh the HAOS app repository and install **OpenAI Secure MCP Tunnel (OAuth Test)** alongside the existing app.
-2. Create a **new** OpenAI tunnel in the same workspace and enter its ID and restricted runtime key in this app's configuration.
-3. Start the new app and inspect `oauth_probe` and `OAuth discovery` logs before attempting to add an OAuth-authenticated ChatGPT plugin.
+- `http://dawnha.local` — **existing local HTTP default** (kept for compatibility). Other local HTTP hostnames and ports are supported.
+- `https://your-host.example` — an externally accessible HTTPS origin, such as a reverse proxy, Home Assistant Cloud, or Tailscale Serve. **Experimental**: token and revocation routing from the container to that HTTPS origin is not yet end-to-end verified.
 
-The original no-auth add-on remains independent and can keep running. Existing OAuth app configurations using the previous default `http://127.0.0.1:8098/mcp` are automatically migrated on startup; newly installed apps use `http://dawnha.local/mcp`.
+The value must be an origin only (scheme, hostname and optional port; no path). It must match a configured Home Assistant URL, otherwise discovery may return missing or relative metadata. All connections through this test app are private to the selected OpenAI tunnel.
+
+HTTP mode creates a container-only `/etc/hosts` entry and a loopback HTTP proxy, with a narrowly scoped Harpoon hostname rule. HTTPS mode uses a local MCP proxy but advertises the configured external issuer and explicitly permits OAuth discovery and forwarding to that HTTPS origin; the app must be able to reach it. In both modes, bearer tokens are forwarded to Home Assistant Core; no Supervisor token is supplied.
+
+The `MCP_SERVER_URL` is derived automatically; previously saved values are ignored, so upgrading from versions 0.1.11/0.1.12 does not require changing that option.
+
+**Security:** Plain HTTP is for local experiments only. Prefer HTTPS for normal use. Neither mode is production-ready until browser authorization, token exchange, refresh, and per-user access control are verified.
+
+## Installation
+
+1. Install **OpenAI Secure MCP Tunnel (OAuth Test)** from this repository alongside the working no-auth app.
+2. Enter a separate OpenAI tunnel ID and restricted runtime API key.
+3. For an external URL, set `HA_OAUTH_ORIGIN` before starting. Leave the default to retain local-HTTP behavior.
+4. Start the app and inspect `oauth_setup` / `oauth_probe` logs, then try ChatGPT OAuth discovery.
