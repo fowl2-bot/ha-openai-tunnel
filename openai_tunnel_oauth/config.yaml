@@ -28,5 +28,7 @@ schema:
   CONTROL_PLANE_TUNNEL_ID: str
   CONTROL_PLANE_API_KEY: password
   HA_OAUTH_ORIGIN: str
+  # Deprecated option from <= 0.1.12. Accepted but ignored at startup.
+  MCP_SERVER_URL: str?
   LOG_LEVEL: list(debug|info|warn|error)
   LOG_FORMAT: list(struct-text|json)
