@@ -31,6 +31,15 @@ else
     if [ "$HA_OAUTH_SCHEME" = "http" ]; then port=80; else port=443; fi
 fi
 
+# HA's URL discovery matches the literal request Host and port.
+# The proxy-to-Core leg is HTTP, so without an explicit :443 HA would
+# incorrectly read the HTTPS issuer's Host as port 80 and return a 404.
+# Keep custom origin ports unchanged.
+upstream_authority="$authority"
+if [ "$HA_OAUTH_SCHEME" = "https" ] && [ "$authority" = "$host" ]; then
+    upstream_authority="$host:443"
+fi
+
 if [ "$HA_OAUTH_SCHEME" = "http" ]; then
     listen_port="$port"
     # Container-only hostname override (does not affect browsers/HAOS).
@@ -52,6 +61,6 @@ fi
 export HA_OAUTH_ORIGIN HA_OAUTH_SCHEME MCP_SERVER_URL HARPOON_ALLOW_PLAINTEXT_HTTP=true
 sed -e "s|__HA_LISTEN_PORT__|$listen_port|g" \
     -e "s|__HA_OAUTH_HOST__|$host|g" \
-    -e "s|__HA_OAUTH_AUTHORITY__|$authority|g" \
+    -e "s|__HA_OAUTH_AUTHORITY__|$upstream_authority|g" \
     /etc/nginx/http.d/default.conf.template > /etc/nginx/http.d/default.conf
 printf 'oauth_setup: issuer=%s mcp=%s mode=%s\n' "$HA_OAUTH_ORIGIN" "$MCP_SERVER_URL" "$HA_OAUTH_SCHEME"
